@@ -12,6 +12,7 @@ restrictions on these requests it was possible to perform them
 as cross-origin requests from third-party websites.
 This makes it possible to exploit otherwise unreachable RMI endpoints.
 
+[Blog post with some more info](https://mbechler.github.io/2018/05/21/Java-CVE-2018-2800/)
 
 ## Disclaimer
 
@@ -22,4 +23,6 @@ and/or testing your own systems for these vulnerabilities.
 ## Notes
 
 Some browsers/browser plugins may implement further restrictions
-trying to restrict requests to local networks.
+trying to disallow requests to local networks.
+
+The JMX/RMI PoC vectors have already been addressed in an earlier Java release.
